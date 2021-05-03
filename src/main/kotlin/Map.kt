@@ -1,13 +1,12 @@
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.mix
+import org.openrndr.extra.noise.simplex
 import org.openrndr.math.IntVector2
 import org.openrndr.math.Vector3
 import org.openrndr.math.clamp
 import kotlin.math.*
 
 class Map(val size: Int, val seed: Int) {
-
-    // The fractal perlin noise maps have a lot of magic numbers. Im sorry.
 
     // grainMap is a noise map which determines the graininess of other maps
     val grainMap = Array(size) { i -> DoubleArray(size) { j -> noise(i, j, size, seed * 4, grain=0.4)} }
@@ -18,18 +17,17 @@ class Map(val size: Int, val seed: Int) {
     // hardnessMap determines how strongly erosion happens
     val hardnessMap = Array(size) { i -> DoubleArray(size) { j -> noise(j, i, size, seed * 2, grain = grainMap[j][i]) } }
     // structureMap determines how much the ground collapses (gets smoothened). Mostly very close to 1. Same seed as hardnessMap tho.
-    val structureMap = Array(size) { i -> DoubleArray(size) { j -> fx1(noise(j, i, size, seed * 2, grain = grainMap[j][i]) * 3, 40) } }
+    val structureMap = Array(size) { i -> DoubleArray(size) { j -> fx1(noise(j, i, size, seed * 2, grain = grainMap[j][i]) * 3, 10) } }
     // wetnessMap represents how much water is in the soil
     val wetnessMap = Array(size) {DoubleArray(size)}
 
-    val colors = Array(size) {Array(size) {ColorRGBa.BLACK} }
-
     // Scroll to the bottom for the simulation parameters (those which have been separated from the code)
+
 
     /**
      * Each frame, some actions are done on each position (pixel) of the map.
      */
-    fun step(u_time: Double) {
+    fun timeStep(u_time: Double) {
         //SUN_DIR = Vector3(sin(u_time), cos(u_time), -3.0).normalized // rotate sun
         map.forEachIndexed { i, it ->
             it.forEachIndexed { j, _ ->
@@ -144,7 +142,7 @@ class Map(val size: Int, val seed: Int) {
                 val d = IntVector2(i, j) + IntVector2(x, y)
                 val inBounds = (d.x in 0 until size) && (d.y in 0 until size)
                 if (inBounds) {
-                    wetness += wetnessMap[d.x][d.y] * (1.0 - abs(i) * WETNESS_FALLOF) * (1.0 - abs(j) * WETNESS_FALLOF)
+                    wetness += wetnessMap[d.x][d.y] * (1.0 - abs(i) * WETNESS_FALLOFF) * (1.0 - abs(j) * WETNESS_FALLOFF)
                 }
             }
         }
@@ -159,36 +157,51 @@ class Map(val size: Int, val seed: Int) {
         val height = map[x][y]
         if (height < SEA_LEVEL) {
             return WATER
-        } //else if (height * 100 % 2 < 0.1) return LINE
+        }
+
         val gradient = gradient(x, y)
         val slope = abs(gradient.z)
-        val col = getTerrainCol(height, slope, wetness(x, y))
+        val wetness = wetness(x, y)
+
+        var col = SAND
+
+        if (height > SNOW_LEVEL && wetness > GLACIER_LIMIT) {
+            col = SNOW
+        } else if (wetness > RIVER_LIMIT) {
+            col = WATER
+        } else if (height > SEA_LEVEL + SAND_THICKNESS) {
+            val s = (slope - SLOPE_LIMIT) / SLOPE_LIMIT
+            val niceHeight = max((SNOW_LEVEL - height) / (SNOW_LEVEL - SEA_LEVEL), 0.0)
+            val nice = niceHeight * (1.0 - s + wetness * 6)
+            if (nice - 3 * s + 2 * niceHeight > FARM_LIMIT) {
+                col = farmTexture[x][y]
+            } else {
+                col = mix(mix(CLIFF, DARK_CLIFF, nice), FOREST, nice)
+            }
+        }
         val lit = clamp(1.0 - gradient.dot(SUN_DIR), 0.5, 1.5)
         return col.shade(lit)
     }
 
-    /**
-     * Determines the terrain color (or terrain type) depending on height, slope and wetness
-     */
-    private fun getTerrainCol(height: Double, slope: Double, wetness: Double): ColorRGBa {
-        if (height > SNOW_LEVEL && wetness > GLACIER_LIMIT) { return SNOW }
-        if (wetness > RIVER_LIMIT) { return WATER }
-        if (height > SEA_LEVEL + SAND_THICKNESS) {
-            val s = (slope - SLOPE_LIMIT) / SLOPE_LIMIT
-            val niceHeight = max((SNOW_LEVEL - height) / (SNOW_LEVEL - SEA_LEVEL), 0.0)
-            val nice = niceHeight * (1.0 - s + wetness * 6)
-            return mix(mix(CLIFF, DARK_CLIFF, nice), FOREST, nice)
-        }
-        return SAND
+    private fun getFarmColor(x: Int, y: Int): ColorRGBa {
+        val factor = simplex(seed = seed * 2, x.toDouble() / 20, y.toDouble() / 20) +
+                simplex(seed = seed * 3, x.toDouble() / 80, y.toDouble() / 80) * 0.5 +
+                simplex(seed = seed * 3, x.toDouble() / 160, y.toDouble() / 160) * 0.25
+        if (factor.absoluteValue < 0.05) return ROAD
+        return mix(FARM1, FARM2, factor * 0.5 + 0.75)
     }
 
-    var WATER = ColorRGBa.fromHex("#0084ff")
+
+    var WATER = ColorRGBa.fromHex("#1672c7")
     var CLIFF = ColorRGBa.fromHex("#807d79")
     var DARK_CLIFF = ColorRGBa.fromHex("#494f44")
     var SNOW = ColorRGBa.fromHex("#f2f5f7")
     var SAND = ColorRGBa.fromHex("#dbd797")
     var FOREST = ColorRGBa.fromHex("#005e34")
-    val LINE = ColorRGBa.fromHex("#000000")
+    val FARM1 = ColorRGBa.fromHex("#657d40")
+    val FARM2 = ColorRGBa.fromHex("#235c0a")
+    val ROAD = ColorRGBa.fromHex("#453f29")
+    private val farmTexture = Array(size) { i -> Array(size) { j -> getFarmColor(i, j) } }
 
     var SUN_DIR = Vector3(-1.0, 1.0, -2.0).normalized
     val UP = Vector3(0.0, 0.0, -1.0).normalized
@@ -201,7 +214,8 @@ class Map(val size: Int, val seed: Int) {
     var SLOPE_LIMIT = 0.01
     var RIVER_LIMIT = 6.0
     var GLACIER_LIMIT = 0.8
-    var WETNESS_FALLOF = 0.6
+    var FARM_LIMIT = 4.0
+    var WETNESS_FALLOFF = 0.6
 
     // These params affect the erosion process
     var ACCUMULATION = 3e-9

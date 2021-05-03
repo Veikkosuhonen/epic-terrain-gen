@@ -34,7 +34,8 @@ fun main() = application {
 
     val size = 720;
 
-    val map = Map(size, 42)
+    val seed = 42
+    val map = Map(size, seed)
 
     var doStep = true
     var changedParams = false
@@ -46,18 +47,20 @@ fun main() = application {
         var SEA_LEVEL = 0.6
         @DoubleParameter("Snow level", 0.1, 1.5)
         var SNOW_LEVEL = 1.0
-        @DoubleParameter("Slope limit", 0.001, 0.1, 3)
+        @DoubleParameter("Slope limit", 0.0005, 0.02, 3)
         var SLOPE_LIMIT = 0.01
-        @DoubleParameter("River limit", 1.0, 10.0)
+        @DoubleParameter("River limit", 1.0, 20.0)
         var RIVER_LIMIT = 6.0
         @DoubleParameter("Glacier limit", 0.5, 1.5)
         var GLACIER_LIMIT = 0.8
-        @DoubleParameter("Wetness fallof", 0.1, 1.0)
-        val WETNESS_FALLOF = 0.6
+        @DoubleParameter("Farm limit", 6.0, 16.0)
+        var FARM_LIMIT = 10.0
+        @DoubleParameter("Wetness falloff", 0.1, 1.0)
+        val WETNESS_FALLOFF = 0.6
     }
     val colors = object {
         @ColorParameter("Water")
-        var WATER = ColorRGBa.fromHex("#0084ff")
+        var WATER = ColorRGBa.fromHex("#1672c7")
         @ColorParameter("Cliff")
         var CLIFF = ColorRGBa.fromHex("#807d79")
         @ColorParameter("Steep cliff")
@@ -73,7 +76,7 @@ fun main() = application {
         @DoubleParameter("Accumulation", 1e-9, 1e-7, 9)
         var ACCUMULATION = 3e-9
         @DoubleParameter("Erosion", 0.01, 0.2, 2)
-        var EROSION = 0.1
+        var EROSION = 0.05
         @IntParameter("Collapse Range", 1, 4)
         var COLLAPSE_RANGE = 2
         @IntParameter("Droplet iterations", 10, 200)
@@ -99,7 +102,8 @@ fun main() = application {
             map.SLOPE_LIMIT = graphics.SLOPE_LIMIT
             map.RIVER_LIMIT = graphics.RIVER_LIMIT
             map.GLACIER_LIMIT = graphics.GLACIER_LIMIT
-            map.WETNESS_FALLOF = graphics.WETNESS_FALLOF
+            map.FARM_LIMIT = graphics.FARM_LIMIT
+            map.WETNESS_FALLOFF = graphics.WETNESS_FALLOFF
             map.WATER = colors.WATER
             map.CLIFF = colors.CLIFF
             map.DARK_CLIFF = colors.DARK_CLIFF
@@ -124,7 +128,7 @@ fun main() = application {
 
         extend {
             if (doStep) {
-                map.step(frameCount.toDouble() / 144.0) // sure 144.0 fps
+                map.timeStep(frameCount.toDouble() / 144.0) // sure 144.0 fps
             }
             if (changedParams || doStep) {
                 map.map.forEachIndexed { i, it ->
