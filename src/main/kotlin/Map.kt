@@ -22,6 +22,8 @@ class Map(val size: Int, val seed: Int) {
     // wetnessMap represents how much water is in the soil
     val wetnessMap = Array(size) {DoubleArray(size)}
 
+    val colors = Array(size) {Array(size) {ColorRGBa.BLACK} }
+
     // Scroll to the bottom for the simulation parameters (those which have been separated from the code)
 
     /**
@@ -153,7 +155,7 @@ class Map(val size: Int, val seed: Int) {
      * Determines and returns the color of the map in the position.
      * Conceptually and semantically pretty much the same as a main method in a fragment shader.
      */
-    fun getColor(x: Int, y: Int): ColorRGBa {
+    public fun getColor(x: Int, y: Int): ColorRGBa {
         val height = map[x][y]
         if (height < SEA_LEVEL) {
             return WATER
@@ -180,36 +182,36 @@ class Map(val size: Int, val seed: Int) {
         return SAND
     }
 
-    val WATER = ColorRGBa.fromHex("#0084ff")
-    val CLIFF = ColorRGBa.fromHex("#807d79")
-    val DARK_CLIFF = ColorRGBa.fromHex("#494f44")
-    val SNOW = ColorRGBa.fromHex("#f2f5f7")
-    val SAND = ColorRGBa.fromHex("#dbd797")
-    val FOREST = ColorRGBa.fromHex("#005e34")
+    var WATER = ColorRGBa.fromHex("#0084ff")
+    var CLIFF = ColorRGBa.fromHex("#807d79")
+    var DARK_CLIFF = ColorRGBa.fromHex("#494f44")
+    var SNOW = ColorRGBa.fromHex("#f2f5f7")
+    var SAND = ColorRGBa.fromHex("#dbd797")
+    var FOREST = ColorRGBa.fromHex("#005e34")
     val LINE = ColorRGBa.fromHex("#000000")
 
     var SUN_DIR = Vector3(-1.0, 1.0, -2.0).normalized
     val UP = Vector3(0.0, 0.0, -1.0).normalized
 
     // These params mostly affect the colors but not the simulation logic
-    val SEA_LEVEL = 0.6
-    val SNOW_LEVEL = 1.0
+    var SEA_LEVEL = 0.6
+    var SNOW_LEVEL = 1.0
     val SAND_THICKNESS = 0.002
 
-    val SLOPE_LIMIT = 0.01
-    val RIVER_LIMIT = 6
-    val GLACIER_LIMIT = 0.8
-    val WETNESS_FALLOF = 0.6
+    var SLOPE_LIMIT = 0.01
+    var RIVER_LIMIT = 6.0
+    var GLACIER_LIMIT = 0.8
+    var WETNESS_FALLOF = 0.6
 
     // These params affect the erosion process
-    val ACCUMULATION = 3e-8
-    val EROSION = 0.3
-    val COLLAPSE_RANGE = 2
-    val DROPLET_ITERS = 300
-    val CAPACITY_LIMIT = 0.000001
-    val DIFF_LIMIT = 0.00005
+    var ACCUMULATION = 3e-9
+    var EROSION = 0.1
+    var COLLAPSE_RANGE = 2
+    var DROPLET_ITERS = 100
+    var CAPACITY_LIMIT = 0.000001
+    var DIFF_LIMIT = 0.00005
 
-    val EVAPORATION = 0.1
+    var EVAPORATION = 0.1
 
     /**
      * Magic function, which turns most values into 1 except those that are close to 0.

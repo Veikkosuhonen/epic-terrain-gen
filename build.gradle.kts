@@ -7,7 +7,7 @@ import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 group = "org.openrndr.template"
 version = "0.3.17"
 
-val applicationMainClass = "TemplateProgramKt"
+val applicationMainClass = "OpenRNDRApplicationKt"
 
 /*  Which additional (ORX) libraries should be added to this project. */
 val orxFeatures = setOf(
